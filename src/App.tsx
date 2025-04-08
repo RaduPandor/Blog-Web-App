@@ -1,137 +1,67 @@
-import { useState, useEffect } from "react";
-import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField
-} from "@mui/material";
-
-const API_URL = "http://localhost:5013/api/posts";
-
-type Post = {
-  id: number;
-  title: string;
-  author: string;
-  content: string;
-  createdDate: string;
-  lastModifiedDate: string;
-};
+import { useState } from "react";
+import { usePosts } from "./Queries/usePosts";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Post } from "./Models/Post";
+import { PostList } from "./Components/PostList";
+import { PostForm } from "./Components/PostForm";
+import { Button } from "@mui/material";
+import { addPost, updatePost, deletePost } from "./Services/PostService";
 
 function App() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [newPost, setNewPost] = useState({ title: "", author: "", content: "" });
-  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const { posts = [], loading } = usePosts();
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetch(API_URL)
-      .then((response) => response.json())
-      .then((data) => setPosts(data));
-  }, []);
+  const addPostMutation = useMutation({
+    mutationFn: (newPost: Omit<Post, "id" | "createdDate" | "lastModifiedDate">) => addPost(newPost),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+  });
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => {
-    setOpen(false);
-    setEditingPost(null);
+  const updatePostMutation = useMutation({
+    mutationFn: (updatedPost: Post) => updatePost(updatedPost),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+  });
+
+  const deletePostMutation = useMutation({
+    mutationFn: (id: number) => deletePost(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+  });
+
+  const handleAddPost = (newPost: Omit<Post, "id" | "createdDate" | "lastModifiedDate">) => {
+    addPostMutation.mutate(newPost);
   };
 
-  const handleAddOrUpdatePost = async () => {
-    if (!newPost.title || !newPost.author || !newPost.content) return;
-    const now = new Date().toISOString();
-
-    if (editingPost) {
-      await fetch(`${API_URL}/${editingPost.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...editingPost, ...newPost, lastModifiedDate: now }),
-      });
-
-      const updatedPosts = posts.map((post) =>
-        post.id === editingPost.id ? { ...post, ...newPost, lastModifiedDate: now } : post
-      );
-      setPosts(updatedPosts);
-    } else {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newPost, createdDate: now, lastModifiedDate: now }),
-      });
-
-      const addedPost = await response.json();
-      setPosts([...posts, addedPost]);
-    }
-
-    setNewPost({ title: "", author: "", content: "" });
-    handleClose();
+  const handleUpdatePost = (updatedPost: Post) => {
+    updatePostMutation.mutate(updatedPost);
   };
 
-  const handleEdit = (post: Post) => {
-    setEditingPost(post);
-    setNewPost({ title: post.title, author: post.author, content: post.content });
-    setOpen(true);
+  const handleDeletePost = (id: number) => {
+    deletePostMutation.mutate(id);
   };
 
-  const handleDelete = async (id: number) => {
-    await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-    setPosts(posts.filter((post) => post.id !== id));
-  };
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div style={{ padding: "20px" }}>
-      <Button variant="contained" color="primary" onClick={handleOpen}>
+    <div>
+      <Button variant="contained" color="primary" onClick={() => setOpen(true)}>
         Add Post
       </Button>
-
-      <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>{editingPost ? "Edit Post" : "Add New Post"}</DialogTitle>
-        <DialogContent>
-          <TextField label="Title" fullWidth margin="dense" value={newPost.title}
-            onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-          />
-          <TextField label="Author" fullWidth margin="dense" value={newPost.author}
-            onChange={(e) => setNewPost({ ...newPost, author: e.target.value })}
-          />
-          <TextField label="Content" fullWidth multiline rows={4} margin="dense" value={newPost.content}
-            onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} color="secondary">Cancel</Button>
-          <Button onClick={handleAddOrUpdatePost} color="primary">
-            {editingPost ? "Update" : "Add"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Title</TableCell>
-              <TableCell>Author</TableCell>
-              <TableCell>Content</TableCell>
-              <TableCell>Created Date</TableCell>
-              <TableCell>Last Modified Date</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {posts.map((post) => (
-              <TableRow key={post.id}>
-                <TableCell>{post.id}</TableCell>
-                <TableCell>{post.title}</TableCell>
-                <TableCell>{post.author}</TableCell>
-                <TableCell>{post.content}</TableCell>
-                <TableCell>{post.createdDate}</TableCell>
-                <TableCell>{post.lastModifiedDate}</TableCell>
-                <TableCell>
-                  <Button onClick={() => handleEdit(post)}>Edit</Button>
-                  <Button onClick={() => handleDelete(post.id)}>Delete</Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <PostList posts={posts} onEdit={setSelectedPost} onDelete={handleDeletePost} />
+      <PostForm
+        open={open}
+        post={selectedPost}
+        onClose={() => setOpen(false)}
+        onSubmit={selectedPost ? handleUpdatePost : handleAddPost}
+      />
     </div>
   );
 }
