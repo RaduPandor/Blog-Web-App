@@ -1,6 +1,6 @@
 import { Post } from "../Models/Post";
 
-const API_URL = process.env.API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 if (!API_URL) {
     throw new Error("API_URL not defined in .env");
   }

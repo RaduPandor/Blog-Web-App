@@ -17,6 +17,7 @@ function App() {
     mutationFn: (newPost: Omit<Post, "id" | "createdDate" | "lastModifiedDate">) => addPost(newPost),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
+      setOpen(false);
     },
   });
 
@@ -24,6 +25,7 @@ function App() {
     mutationFn: (updatedPost: Post) => updatePost(updatedPost),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
+      setOpen(false);
     },
   });
 
@@ -59,7 +61,10 @@ function App() {
       <PostForm
         open={open}
         post={selectedPost}
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false);
+          setSelectedPost(null);
+        }}
         onSubmit={selectedPost ? handleUpdatePost : handleAddPost}
       />
     </div>

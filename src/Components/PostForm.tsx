@@ -23,23 +23,24 @@ export const PostForm = ({ open, post, onClose, onSubmit }: PostFormProps) => {
         author: post.author,
         content: post.content,
       });
+    } else {
+      setNewPost({ title: "", author: "", content: "" });
     }
-  }, [post]);
+  }, [post, open]);
 
   const handleSubmit = () => {
     if (!newPost.title || !newPost.author || !newPost.content) return;
-  
+
     const postToSubmit = {
       ...newPost,
       id: post?.id || Date.now(),
       createdDate: post ? post.createdDate : "",
       lastModifiedDate: post ? post.lastModifiedDate : "",
     };
-  
+
     onSubmit(postToSubmit);
     onClose();
   };
-  
 
   return (
     <Dialog open={open} onClose={onClose}>
