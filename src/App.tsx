@@ -1,39 +1,19 @@
 import { useState } from "react";
 import { usePosts } from "./Queries/usePosts";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePostMutations } from "./Queries/usePostMutations";
 import { Post } from "./Models/Post";
 import { PostList } from "./Components/PostList";
 import { PostForm } from "./Components/PostForm";
 import { Button } from "@mui/material";
-import { addPost, updatePost, deletePost } from "./Services/PostService";
 
 function App() {
   const { posts = [], loading } = usePosts();
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [open, setOpen] = useState(false);
-  const queryClient = useQueryClient();
 
-  const addPostMutation = useMutation({
-    mutationFn: (newPost: Omit<Post, "id" | "createdDate" | "lastModifiedDate">) => addPost(newPost),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      setOpen(false);
-    },
-  });
-
-  const updatePostMutation = useMutation({
-    mutationFn: (updatedPost: Post) => updatePost(updatedPost),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-      setOpen(false);
-    },
-  });
-
-  const deletePostMutation = useMutation({
-    mutationFn: (id: number) => deletePost(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
-    },
+  const { addPostMutation, updatePostMutation, deletePostMutation } = usePostMutations(() => {
+    setOpen(false);
+    setSelectedPost(null);
   });
 
   const handleAddPost = (newPost: Omit<Post, "id" | "createdDate" | "lastModifiedDate">) => {
