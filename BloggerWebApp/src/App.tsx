@@ -1,19 +1,10 @@
-import { Routes, Route } from "react-router-dom";
-import Home from "./Pages/Home";
-import ViewPost from "./Pages/ViewPost";
-import EditPost from "./Pages/EditPost";
-import Register from "./Pages/Register";
-import Login from "./Pages/Login";    
+import { Outlet } from "react-router-dom";
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/post/:id" element={<ViewPost />} />
-      <Route path="/post/:id/edit" element={<EditPost />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/login" element={<Login />} />  
-    </Routes>
+    <div>
+      <Outlet />
+    </div>
   );
 }
 

@@ -43,7 +43,7 @@ const Login = () => {
 
       const data = await response.json();
 
-      localStorage.setItem("user", JSON.stringify(data.user));
+      sessionStorage.setItem("user", JSON.stringify(data.user));
       navigate("/");
     } catch (err: unknown) {
       if (err instanceof Error) {

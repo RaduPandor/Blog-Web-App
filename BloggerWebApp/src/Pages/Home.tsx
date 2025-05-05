@@ -8,7 +8,7 @@ import { PostForm } from "../Components/PostForm";
 import { Button, Container, Typography, Box } from "@mui/material";
 
 type NewPost = Omit<Post, "id" | "createdDate" | "lastModifiedDate">;
-type User = { id: number; username: string };
+type User = { id: number; userName: string };
 
 function Home() {
   const navigate = useNavigate();
@@ -24,7 +24,7 @@ function Home() {
   });
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = sessionStorage.getItem('user');
     if (storedUser) {
         setUser(JSON.parse(storedUser));
     }
@@ -52,7 +52,7 @@ function Home() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
     setUser(null);
   };
 
@@ -75,7 +75,7 @@ function Home() {
             {user ? (
               <>
                 <Typography variant="body1">
-                  Welcome, {user.username}
+                  Welcome, {user.userName}
                 </Typography>
                 <Button 
                   variant="contained" 
