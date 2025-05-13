@@ -1,12 +1,20 @@
-FROM node:lts-bookworm
+FROM node:lts-alpine
 
+# Set working directory
 WORKDIR /usr/src/app
 
-COPY package*.json ./
-RUN npm install
+# Install all dependencies (including Vite)
+COPY ["package.json", "package-lock.json*", "npm-shrinkwrap.json*", "./"]
+RUN npm install --silent
 
+# Copy app source
 COPY . .
 
-EXPOSE 5173
+# Fix permissions
+RUN chown -R node /usr/src/app
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Switch to non-root user
+USER node
+
+# Start the Vite dev server or preview server
+CMD ["npm", "start"]

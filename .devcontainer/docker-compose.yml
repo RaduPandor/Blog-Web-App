@@ -11,9 +11,10 @@ services:
     volumes:
       - .:/workspaces/BloggerWebApp
     networks:
-      - blogapp-network
+      - blogapp_blogapp-network
 
 networks:
-  blogapp-network:
+  blogapp_blogapp-network:
     external: true
+    name: blogapp-network
 
