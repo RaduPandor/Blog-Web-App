@@ -1,0 +1,20 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blogger-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
+    volumes:
+      - .:/workspaces/BloggerWebApp
+    networks:
+      - blogapp_blogapp-network
+
+networks:
+  blogapp_blogapp-network:
+    external: true
+    name: blogapp-network
+
