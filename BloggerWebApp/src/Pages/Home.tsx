@@ -51,10 +51,21 @@ function Home() {
     setSelectedPostId(null);
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('user');
-    setUser(null);
-  };
+const handleLogout = async () => {
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_URL;
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch (err: unknown) {
+    console.error("Error during logout:", err);
+    alert(`Network error during logout: ${err}`);
+    return;
+  }
+  sessionStorage.removeItem("user");
+  setUser(null);
+};
 
   if (postsLoading) {
     return (

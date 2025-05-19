@@ -32,6 +32,7 @@ export const addPost = async (newPost: Omit<Post, "id" | "createdDate" | "lastMo
     const response = await fetch(POSTS_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(newPost),
     });
     
@@ -51,11 +52,12 @@ export const updatePost = async (updatedPost: Post): Promise<Post> => {
     const response = await fetch(`${POSTS_ENDPOINT}/${updatedPost.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify(updatedPost),
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to update post: ${response.status} ${response.statusText}`);
+      throw new Error(`Not allowed to update post: ${response.status} ${response.statusText}`);
     }
     
     return response.json();
@@ -66,14 +68,11 @@ export const updatePost = async (updatedPost: Post): Promise<Post> => {
 };
 
 export const deletePost = async (id: number): Promise<void> => {
-  try {
-    const response = await fetch(`${POSTS_ENDPOINT}/${id}`, { method: "DELETE" });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to delete post: ${response.status} ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error("Error deleting post:", error);
-    throw error;
+  const response = await fetch(`${POSTS_ENDPOINT}/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete post or not allowed to ${response.status} ${response.statusText}`);
   }
 };
