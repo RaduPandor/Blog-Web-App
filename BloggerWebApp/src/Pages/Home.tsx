@@ -1,34 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePosts } from "../Queries/usePosts";
 import { usePostMutations } from "../Queries/usePostMutations";
+import { useCurrentUser } from "../Queries/useCurrentUser";
 import { Post } from "../Models/Post";
 import { PostList } from "../Components/PostList";
 import { PostForm } from "../Components/PostForm";
 import { Button, Container, Typography, Box } from "@mui/material";
 
 type NewPost = Omit<Post, "id" | "createdDate" | "lastModifiedDate">;
-type User = { id: number; userName: string };
+type User = { id: string; userName: string; role: string };
 
 function Home() {
   const navigate = useNavigate();
   const { posts = [], loading: postsLoading } = usePosts();
+  const { data: currentUser, isLoading: userLoading } = useCurrentUser();
+  const user: User | null = currentUser
+    ? { id: currentUser.id, userName: currentUser.userName, role: currentUser.roles[0] }
+    : null;
   const [, setSelectedPostId] = useState<number | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  
   const [formOpen, setFormOpen] = useState(false);
-
   const { addPostMutation, deletePostMutation, errorMessage } = usePostMutations(() => {
     setFormOpen(false);
     setSelectedPostId(null);
   });
-
-  useEffect(() => {
-    const storedUser = sessionStorage.getItem('user');
-    if (storedUser) {
-        setUser(JSON.parse(storedUser));
-    }
-  }, []);
 
   const handleAddPost = (newPost: NewPost) => {
     addPostMutation.mutate(newPost);
@@ -51,27 +46,21 @@ function Home() {
     setSelectedPostId(null);
   };
 
-const handleLogout = async () => {
-  try {
+  const handleLogout = async () => {
     const API_BASE_URL = import.meta.env.VITE_API_URL;
     await fetch(`${API_BASE_URL}/auth/logout`, {
       method: "POST",
       credentials: "include",
     });
-  } catch (err: unknown) {
-    console.error("Error during logout:", err);
-    alert(`Network error during logout: ${err}`);
-    return;
-  }
-  sessionStorage.removeItem("user");
-  setUser(null);
-};
+    sessionStorage.removeItem("user");
+    window.location.reload();
+  };
 
-  if (postsLoading) {
+  if (postsLoading || userLoading) {
     return (
       <Container>
         <Box display="flex" justifyContent="center" padding={4}>
-          <Typography>Loading posts...</Typography>
+          <Typography>Loading…</Typography>
         </Box>
       </Container>
     );
@@ -85,27 +74,39 @@ const handleLogout = async () => {
           <Box display="flex" gap={2} alignItems="center">
             {user ? (
               <>
-                <Typography variant="body1">
-                  Welcome, {user.userName}
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  onClick={() => {
-                    setSelectedPostId(null);
-                    setFormOpen(true);
-                  }}
+              <Typography variant="body1">
+                Welcome, {user.userName}
+              </Typography>
+
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => {
+                  setSelectedPostId(null);
+                  setFormOpen(true);
+                }}
+              >
+                Add Post
+              </Button>
+
+              {user.role === "Admin" && (
+                <Button
+                  variant="contained"
+                  color="warning"
+                  onClick={() => navigate("/manage-users")}
                 >
-                  Add Post
+                  Manage Users
                 </Button>
-                <Button 
-                  variant="outlined" 
-                  color="secondary"
-                  onClick={handleLogout}
-                >
-                  Logout
-                </Button>
-              </>
+              )}
+
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={handleLogout}
+              >
+                Logout
+              </Button>
+            </>
             ) : (
               <Button 
                 variant="outlined" 
