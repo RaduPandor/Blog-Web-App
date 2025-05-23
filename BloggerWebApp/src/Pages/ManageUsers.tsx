@@ -15,6 +15,12 @@ type UserRow = {
   role: string;
 };
 
+type CreateUserDto = {
+  username: string;
+  password: string;
+  isAdmin: boolean;
+};
+
 export default function ManageUsers() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -28,8 +34,10 @@ export default function ManageUsers() {
   const fetchUsers = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/Auth/getall`, { credentials: "include" });
-      if (!res.ok) throw new Error(`Failed to fetch users: ${res.status}`);
-      
+      if (!res.ok)
+        {
+         throw new Error(`Failed to fetch users: ${res.status}`);
+        }
       const data: ApiUser[] = await res.json();
       const rows = data.map(u => ({
         id: u.id,
@@ -70,8 +78,7 @@ export default function ManageUsers() {
         throw new Error(`Failed to update username: ${usernameResponse.status}`);
       }
       
-      const roleToSend = role === "User" || role === "" ? "User" : role;
-      
+      const roleToSend = role === "User" || role === "" ? "User" : role;    
       const roleResponse = await fetch(`${API_BASE_URL}/Auth/${id}/role`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -130,7 +137,7 @@ export default function ManageUsers() {
         showSnackbar("Username and password are required", "error");
         return;
       }
-      
+
       const response = await fetch(`${API_BASE_URL}/Auth/create`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -138,48 +145,36 @@ export default function ManageUsers() {
         body: JSON.stringify({
           username: newUser.username,
           password: newUser.password,
-        }),
+          isAdmin: newUser.isAdmin
+        } as CreateUserDto),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to create user: ${response.status}`);
       }
-      
-      if (newUser.isAdmin) {
-        const user = await response.json();
-        if (user && user.Username) {
-          const newUserId = await getUserIdByUsername(user.Username);
-          
-          if (newUserId) {
-            await fetch(`${API_BASE_URL}/Auth/${newUserId}/role`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({ role: "Admin" }),
-            });
-          }
+
+      const result = await response.json();
+      if (newUser.isAdmin && result.userId) {
+        const roleResponse = await fetch(`${API_BASE_URL}/Auth/${result.userId}/role`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ role: "Admin" }),
+        });
+
+        if (!roleResponse.ok) {
+          showSnackbar("User created but failed to assign admin role", "error");
         }
       }
-      
+
       showSnackbar("User created successfully", "success");
       setNewUser({ username: "", password: "", isAdmin: false });
       fetchUsers();
     } catch (error) {
-      console.error("Error creating user:", error);
-      showSnackbar(`Failed to create user: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
-    }
-  };
-  
-  const getUserIdByUsername = async (username: string): Promise<string | null> => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/Auth/getall`, { credentials: "include" });
-      if (!res.ok) return null;
-      
-      const data: ApiUser[] = await res.json();
-      const user = data.find(u => u.username === username);
-      return user ? user.id : null;
-    } catch {
-      return null;
+      showSnackbar(
+        `Failed to create user: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "error"
+      );
     }
   };
 
@@ -192,6 +187,38 @@ export default function ManageUsers() {
       <Box py={4} display="flex" alignItems="center" justifyContent="space-between">
         <Typography variant="h4">Manage Users</Typography>
         <Button variant="outlined" onClick={() => navigate('/')}>Back to Home</Button>
+      </Box>
+            <Box mt={4}>
+        <Typography variant="h6">Add New User</Typography>
+        <Box display="flex" gap={2} mt={2} alignItems="center">
+          <TextField
+            label="Username"
+            value={newUser.username}
+            onChange={e => setNewUser(n => ({ ...n, username: e.target.value }))}
+            required
+          />
+          <TextField
+            label="Password"
+            type="password"
+            value={newUser.password}
+            onChange={e => setNewUser(n => ({ ...n, password: e.target.value }))}
+            required
+          />
+          <Box display="flex" alignItems="center">
+            <Checkbox
+              checked={newUser.isAdmin}
+              onChange={e => setNewUser(n => ({ ...n, isAdmin: e.target.checked }))}
+            />
+            <Typography>Add Admin Role?</Typography>
+          </Box>
+          <Button 
+            variant="contained" 
+            onClick={handleAdd}
+            disabled={!newUser.username || !newUser.password}
+          >
+            Add User
+          </Button>
+        </Box>
       </Box>
       <Table>
         <TableHead>
@@ -256,39 +283,6 @@ export default function ManageUsers() {
           ))}
         </TableBody>
       </Table>
-
-      <Box mt={4}>
-        <Typography variant="h6">Add New User</Typography>
-        <Box display="flex" gap={2} mt={2} alignItems="center">
-          <TextField
-            label="Username"
-            value={newUser.username}
-            onChange={e => setNewUser(n => ({ ...n, username: e.target.value }))}
-            required
-          />
-          <TextField
-            label="Password"
-            type="password"
-            value={newUser.password}
-            onChange={e => setNewUser(n => ({ ...n, password: e.target.value }))}
-            required
-          />
-          <Box display="flex" alignItems="center">
-            <Checkbox
-              checked={newUser.isAdmin}
-              onChange={e => setNewUser(n => ({ ...n, isAdmin: e.target.checked }))}
-            />
-            <Typography>Add Admin Role?</Typography>
-          </Box>
-          <Button 
-            variant="contained" 
-            onClick={handleAdd}
-            disabled={!newUser.username || !newUser.password}
-          >
-            Add User
-          </Button>
-        </Box>
-      </Box>
 
       <Dialog
         open={deleteDialogOpen}

@@ -14,9 +14,9 @@ type User = { id: string; userName: string; role: string };
 function Home() {
   const navigate = useNavigate();
   const { posts = [], loading: postsLoading } = usePosts();
-  const { data: currentUser, isLoading: userLoading } = useCurrentUser();
+  const { data: currentUser } = useCurrentUser();
   const user: User | null = currentUser
-    ? { id: currentUser.id, userName: currentUser.userName, role: currentUser.roles[0] }
+    ? { id: currentUser.id, userName: currentUser.userName, role: currentUser.roles?.[0] || "User" }
     : null;
   const [, setSelectedPostId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -56,7 +56,7 @@ function Home() {
     window.location.reload();
   };
 
-  if (postsLoading || userLoading) {
+  if (postsLoading) {
     return (
       <Container>
         <Box display="flex" justifyContent="center" padding={4}>
