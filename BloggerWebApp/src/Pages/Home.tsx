@@ -8,15 +8,29 @@ import { PostList } from "../Components/PostList";
 import { PostForm } from "../Components/PostForm";
 import { Button, Container, Typography, Box } from "@mui/material";
 
-type NewPost = Omit<Post, "id" | "createdDate" | "lastModifiedDate">;
-type User = { id: string; userName: string; role: string };
+type NewPost = Omit<Post, "id" | "createdDate" | "lastModifiedDate" | "author"> & {
+  title: string;
+  content: string;
+};
+
+type User = { 
+  id: string; 
+  userName: string; 
+  displayName: string;
+  role: string; 
+};
 
 function Home() {
   const navigate = useNavigate();
   const { posts = [], loading: postsLoading } = usePosts();
   const { data: currentUser } = useCurrentUser();
   const user: User | null = currentUser
-    ? { id: currentUser.id, userName: currentUser.userName, role: currentUser.roles?.[0] || "User" }
+    ? { 
+        id: currentUser.id, 
+        userName: currentUser.userName,
+        displayName: currentUser.displayName || currentUser.userName,
+        role: currentUser.roles?.[0] || "User" 
+      }
     : null;
   const [, setSelectedPostId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -26,7 +40,11 @@ function Home() {
   });
 
   const handleAddPost = (newPost: NewPost) => {
-    addPostMutation.mutate(newPost);
+    const postWithAuthor = {
+      ...newPost,
+      author: user?.id || ""
+    };
+    addPostMutation.mutate(postWithAuthor);
   };
 
   const handleDeletePost = (id: number) => {
@@ -75,7 +93,7 @@ function Home() {
             {user ? (
               <>
               <Typography variant="body1">
-                Welcome, {user.userName}
+                Welcome, {user.displayName}
               </Typography>
 
               <Button
@@ -87,6 +105,14 @@ function Home() {
                 }}
               >
                 Add Post
+              </Button>
+
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => navigate("/edit-profile")}
+              >
+                Edit Profile
               </Button>
 
               {user.role === "Admin" && (

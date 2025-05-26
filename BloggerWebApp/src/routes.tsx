@@ -6,6 +6,7 @@ import EditPost from "./Pages/EditPost";
 import Register from "./Pages/Register";
 import Login from "./Pages/Login";
 import ManageUsers from "./Pages/ManageUsers";
+import EditProfile from "./Pages/EditProfile"
 
 const router = createBrowserRouter([
   {
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
       { path: "register", Component: Register },
       { path: "login", Component: Login },
       { path: "manage-users", Component: ManageUsers },
+      { path: "edit-profile", Component: EditProfile },
     ],
   },
 ]);

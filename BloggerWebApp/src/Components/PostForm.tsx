@@ -12,7 +12,6 @@ type PostFormProps<T> = {
 export function PostForm<T>({ open, post, onClose, onSubmit }: PostFormProps<T>) {
   const [newPost, setNewPost] = useState({
     title: "",
-    author: "",
     content: "",
   });
 
@@ -20,22 +19,20 @@ export function PostForm<T>({ open, post, onClose, onSubmit }: PostFormProps<T>)
     if (post) {
       setNewPost({
         title: post.title,
-        author: post.author,
         content: post.content,
       });
     } else {
-      setNewPost({ title: "", author: "", content: "" });
+      setNewPost({ title: "", content: "" });
     }
   }, [post, open]);
 
   const handleSubmit = () => {
-    if (!newPost.title || !newPost.author || !newPost.content) return;
+    if (!newPost.title || !newPost.content) return;
 
     if (post) {
       const updatedPost = {
         ...post,
         title: newPost.title,
-        author: newPost.author,
         content: newPost.content,
       } as unknown as T;
       onSubmit(updatedPost);
@@ -56,13 +53,6 @@ export function PostForm<T>({ open, post, onClose, onSubmit }: PostFormProps<T>)
           onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
         />
         <TextField
-          label="Author"
-          fullWidth
-          margin="dense"
-          value={newPost.author}
-          onChange={(e) => setNewPost({ ...newPost, author: e.target.value })}
-        />
-        <TextField
           label="Content"
           fullWidth
           multiline
@@ -76,7 +66,11 @@ export function PostForm<T>({ open, post, onClose, onSubmit }: PostFormProps<T>)
         <Button onClick={onClose} color="secondary">
           Cancel
         </Button>
-        <Button onClick={handleSubmit} color="primary">
+        <Button 
+          onClick={handleSubmit} 
+          color="primary"
+          disabled={!newPost.title || !newPost.content}
+        >
           {post ? "Update" : "Add"}
         </Button>
       </DialogActions>

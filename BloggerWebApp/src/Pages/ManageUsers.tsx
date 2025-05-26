@@ -1,51 +1,49 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from 'react-router-dom';
-import { Container, Typography, Button, Box, Table, TableBody, TableCell, TableHead, TableRow, TextField, Select, 
-    MenuItem, Checkbox, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Snackbar, Alert} from "@mui/material";
+import { 
+  Container, Typography, Button, Box, Table, TableBody, TableCell, TableHead, TableRow, 
+  TextField, Select, MenuItem, Checkbox, Dialog, DialogTitle, DialogContent, 
+  DialogActions, Snackbar, Alert, FormControl, InputLabel
+} from "@mui/material";
 
-type ApiUser = {
+type User = {
   id: string;
   username: string;
-  role: string | null;
-};
-
-type UserRow = {
-  id: string;
-  username: string;
+  displayName: string;
   role: string;
 };
 
 type CreateUserDto = {
   username: string;
+  displayName: string;
   password: string;
   isAdmin: boolean;
 };
 
 export default function ManageUsers() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [edited, setEdited] = useState<Record<string, { username: string; role: string }>>({});
-  const [newUser, setNewUser] = useState({ username: "", password: "", isAdmin: false });
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [newUser, setNewUser] = useState({ username: "", displayName: "", password: "", isAdmin: false });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [currentEditUser, setCurrentEditUser] = useState<User | null>(null);
+  const [editData, setEditData] = useState({ username: "", displayName: "", role: "User" });
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" as "success" | "error" });
   const API_BASE_URL = import.meta.env.VITE_API_URL;
 
   const fetchUsers = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/Auth/getall`, { credentials: "include" });
-      if (!res.ok)
-        {
-         throw new Error(`Failed to fetch users: ${res.status}`);
-        }
-      const data: ApiUser[] = await res.json();
-      const rows = data.map(u => ({
+      if (!res.ok) {
+        throw new Error(`Failed to fetch users: ${res.status}`);
+      }
+      const data: User[] = await res.json();
+      const normalizedUsers = data.map(u => ({
         id: u.id,
         username: u.username,
-        role: u.role || ""
+        displayName: u.displayName || u.username,
+        role: u.role || "User"
       }));
-      setUsers(rows);
-      setEdited(Object.fromEntries(rows.map(r => [r.id, { username: r.username, role: r.role }])));
+      setUsers(normalizedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
       showSnackbar("Failed to fetch users", "error");
@@ -64,33 +62,55 @@ export default function ManageUsers() {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  const handleSave = async (id: string) => {
+  const openEditDialog = (user: User) => {
+    setCurrentEditUser(user);
+    setEditData({
+      username: user.username,
+      displayName: user.displayName,
+      role: user.role
+    });
+    setEditDialogOpen(true);
+  };
+
+  const closeEditDialog = () => {
+    setEditDialogOpen(false);
+    setCurrentEditUser(null);
+    setEditData({ username: "", displayName: "", role: "User" });
+  };
+
+  const handleSaveChanges = async () => {
+    if (!currentEditUser) return;
+
     try {
-      const { username, role } = edited[id];
-      const usernameResponse = await fetch(`${API_BASE_URL}/Auth/${id}`, {
+      const updateResponse = await fetch(`${API_BASE_URL}/Auth/${currentEditUser.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ 
+          username: editData.username,
+          displayName: editData.displayName 
+        }),
       });
       
-      if (!usernameResponse.ok) {
-        throw new Error(`Failed to update username: ${usernameResponse.status}`);
+      if (!updateResponse.ok) {
+        throw new Error(`Failed to update user: ${updateResponse.status}`);
       }
       
-      const roleToSend = role === "User" || role === "" ? "User" : role;    
-      const roleResponse = await fetch(`${API_BASE_URL}/Auth/${id}/role`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ role: roleToSend }),
-      });
-      
-      if (!roleResponse.ok) {
-        throw new Error(`Failed to update role: ${roleResponse.status}`);
+      if (editData.role !== currentEditUser.role) {
+        const roleResponse = await fetch(`${API_BASE_URL}/Auth/${currentEditUser.id}/role`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ role: editData.role }),
+        });
+        
+        if (!roleResponse.ok) {
+          throw new Error(`Failed to update role: ${roleResponse.status}`);
+        }
       }
       
       showSnackbar("User updated successfully", "success");
+      closeEditDialog();
       fetchUsers();
     } catch (error) {
       console.error("Error updating user:", error);
@@ -98,43 +118,32 @@ export default function ManageUsers() {
     }
   };
 
-  const openDeleteDialog = (id: string) => {
-    setUserToDelete(id);
-    setDeleteDialogOpen(true);
-  };
+  const handleDeleteUser = async () => {
+    if (!currentEditUser) return;
 
-  const handleDeleteConfirm = async () => {
-    if (userToDelete) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/Auth/${userToDelete}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to delete user: ${response.status}`);
-        }
-        
-        showSnackbar("User deleted successfully", "success");
-        setDeleteDialogOpen(false);
-        setUserToDelete(null);
-        fetchUsers();
-      } catch (error) {
-        console.error("Error deleting user:", error);
-        showSnackbar(`Failed to delete user: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
+    try {
+      const response = await fetch(`${API_BASE_URL}/Auth/${currentEditUser.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete user: ${response.status}`);
       }
+      
+      showSnackbar("User deleted successfully", "success");
+      closeEditDialog();
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      showSnackbar(`Failed to delete user: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
     }
   };
 
-  const handleDeleteCancel = () => {
-    setDeleteDialogOpen(false);
-    setUserToDelete(null);
-  };
-
-  const handleAdd = async () => {
+  const handleAddUser = async () => {
     try {
-      if (!newUser.username || !newUser.password) {
-        showSnackbar("Username and password are required", "error");
+      if (!newUser.username || !newUser.displayName || !newUser.password) {
+        showSnackbar("Username, display name, and password are required", "error");
         return;
       }
 
@@ -144,31 +153,19 @@ export default function ManageUsers() {
         credentials: "include",
         body: JSON.stringify({
           username: newUser.username,
+          displayName: newUser.displayName,
           password: newUser.password,
           isAdmin: newUser.isAdmin
         } as CreateUserDto),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create user: ${response.status}`);
-      }
-
-      const result = await response.json();
-      if (newUser.isAdmin && result.userId) {
-        const roleResponse = await fetch(`${API_BASE_URL}/Auth/${result.userId}/role`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ role: "Admin" }),
-        });
-
-        if (!roleResponse.ok) {
-          showSnackbar("User created but failed to assign admin role", "error");
-        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to create user: ${response.status}`);
       }
 
       showSnackbar("User created successfully", "success");
-      setNewUser({ username: "", password: "", isAdmin: false });
+      setNewUser({ username: "", displayName: "", password: "", isAdmin: false });
       fetchUsers();
     } catch (error) {
       showSnackbar(
@@ -178,9 +175,11 @@ export default function ManageUsers() {
     }
   };
 
-  const normalizeRole = (role: string): string => {
-    return role === "" ? "User" : role;
-  };
+  const hasChanges = currentEditUser && (
+    editData.username !== currentEditUser.username ||
+    editData.displayName !== currentEditUser.displayName ||
+    editData.role !== currentEditUser.role
+  );
 
   return (
     <Container>
@@ -188,14 +187,23 @@ export default function ManageUsers() {
         <Typography variant="h4">Manage Users</Typography>
         <Button variant="outlined" onClick={() => navigate('/')}>Back to Home</Button>
       </Box>
-            <Box mt={4}>
-        <Typography variant="h6">Add New User</Typography>
-        <Box display="flex" gap={2} mt={2} alignItems="center">
+
+      <Box mt={4} p={3} border={1} borderColor="grey.300" borderRadius={2}>
+        <Typography variant="h6" gutterBottom>Add New User</Typography>
+        <Box display="flex" gap={2} mt={2} alignItems="center" flexWrap="wrap">
           <TextField
             label="Username"
             value={newUser.username}
             onChange={e => setNewUser(n => ({ ...n, username: e.target.value }))}
             required
+            size="small"
+          />
+          <TextField
+            label="Display Name"
+            value={newUser.displayName}
+            onChange={e => setNewUser(n => ({ ...n, displayName: e.target.value }))}
+            required
+            size="small"
           />
           <TextField
             label="Password"
@@ -203,101 +211,100 @@ export default function ManageUsers() {
             value={newUser.password}
             onChange={e => setNewUser(n => ({ ...n, password: e.target.value }))}
             required
+            size="small"
           />
           <Box display="flex" alignItems="center">
             <Checkbox
               checked={newUser.isAdmin}
               onChange={e => setNewUser(n => ({ ...n, isAdmin: e.target.checked }))}
             />
-            <Typography>Add Admin Role?</Typography>
+            <Typography>Admin Role</Typography>
           </Box>
           <Button 
             variant="contained" 
-            onClick={handleAdd}
-            disabled={!newUser.username || !newUser.password}
+            onClick={handleAddUser}
+            disabled={!newUser.username || !newUser.displayName || !newUser.password}
           >
             Add User
           </Button>
         </Box>
       </Box>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>ID</TableCell>
-            <TableCell>Current Username</TableCell>
-            <TableCell>New Username</TableCell>
-            <TableCell>Role</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {users.map(u => (
-            <TableRow key={u.id}>
-              <TableCell>{u.id}</TableCell>
-              <TableCell>
-                <Typography>{u.username}</Typography>
-              </TableCell>
-              <TableCell>
-                <TextField
-                  placeholder="New Username"
-                  value={edited[u.id]?.username || ""}
-                  onChange={e =>
-                    setEdited(ed => ({
-                      ...ed,
-                      [u.id]: { ...ed[u.id], username: e.target.value }
-                    }))
-                  }
-                  size="small"
-                />
-              </TableCell>
-              <TableCell>
-                <Select
-                  value={edited[u.id]?.role === "" ? "User" : edited[u.id]?.role || "User"}
-                  onChange={e =>
-                    setEdited(ed => ({
-                      ...ed,
-                      [u.id]: { ...ed[u.id], role: e.target.value }
-                    }))
-                  }
-                  size="small"
-                >
-                  <MenuItem value="User">User</MenuItem>
-                  <MenuItem value="Admin">Admin</MenuItem>
-                </Select>
-              </TableCell>
-              <TableCell>
-                <Button 
-                  onClick={() => handleSave(u.id)}
-                  disabled={
-                    edited[u.id]?.username === u.username && 
-                    normalizeRole(edited[u.id]?.role) === normalizeRole(u.role)
-                  }
-                >
-                  Save
-                </Button>
-                <Button color="error" onClick={() => openDeleteDialog(u.id)}>
-                  Delete
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
 
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleDeleteCancel}
-      >
-        <DialogTitle>Confirm Deletion</DialogTitle>
+      <Box mt={4}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell><strong>Username</strong></TableCell>
+              <TableCell><strong>Display Name</strong></TableCell>
+              <TableCell><strong>Role</strong></TableCell>
+              <TableCell><strong>Actions</strong></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {users.map(user => (
+              <TableRow key={user.id}>
+                <TableCell>{user.username}</TableCell>
+                <TableCell>{user.displayName}</TableCell>
+                <TableCell>{user.role}</TableCell>
+                <TableCell>
+                  <Button 
+                    variant="outlined"
+                    size="small"
+                    onClick={() => openEditDialog(user)}
+                  >
+                    Edit
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Box>
+
+      <Dialog open={editDialogOpen} onClose={closeEditDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit User</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete this user?
-          </DialogContentText>
+          <Box display="flex" flexDirection="column" gap={3} mt={2}>
+            <TextField
+              label="Username"
+              value={editData.username}
+              onChange={e => setEditData(prev => ({ ...prev, username: e.target.value }))}
+              fullWidth
+            />
+            <TextField
+              label="Display Name"
+              value={editData.displayName}
+              onChange={e => setEditData(prev => ({ ...prev, displayName: e.target.value }))}
+              fullWidth
+            />
+            <FormControl fullWidth>
+              <InputLabel>Role</InputLabel>
+              <Select
+                value={editData.role}
+                label="Role"
+                onChange={e => setEditData(prev => ({ ...prev, role: e.target.value }))}
+              >
+                <MenuItem value="User">User</MenuItem>
+                <MenuItem value="Admin">Admin</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteCancel}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" autoFocus>
-            Delete
+          <Button onClick={closeEditDialog}>Cancel</Button>
+          <Button 
+            onClick={handleDeleteUser} 
+            color="error"
+            variant="outlined"
+          >
+            Delete User
+          </Button>
+          <Button 
+            onClick={handleSaveChanges} 
+            variant="contained"
+            disabled={!hasChanges}
+          >
+            Save Changes
           </Button>
         </DialogActions>
       </Dialog>

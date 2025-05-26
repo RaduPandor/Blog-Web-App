@@ -1,5 +1,6 @@
 import { Dialog, DialogActions, DialogContent, DialogTitle, Button, Typography, Box, CircularProgress } from "@mui/material";
 import { usePost } from "../Queries/usePost";
+import { useState, useEffect } from "react";
 
 type PostViewDialogProps = {
   open: boolean;
@@ -33,6 +34,33 @@ const formatDateForDisplay = (dateString: string): string => {
 
 export const PostViewDialog = ({ open, postId, onClose, onEdit }: PostViewDialogProps) => {
   const { post, loading, error } = usePost(postId);
+  const [authorDisplayName, setAuthorDisplayName] = useState<string>("");
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+  useEffect(() => {
+    const fetchAuthorDisplayName = async () => {
+      if (post?.author) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/Auth/${post.author}`, {
+            credentials: "include",
+          });
+          if (response.ok) {
+            const user = await response.json();
+            setAuthorDisplayName(user.displayName || user.username || post.author);
+          } else {
+            setAuthorDisplayName(post.author);
+          }
+        } catch (error) {
+          console.error("Error fetching author details:", error);
+          setAuthorDisplayName(post.author);
+        }
+      }
+    };
+
+    if (post) {
+      fetchAuthorDisplayName();
+    }
+  }, [post, API_BASE_URL]);
 
   return (
     <Dialog
@@ -54,7 +82,7 @@ export const PostViewDialog = ({ open, postId, onClose, onEdit }: PostViewDialog
         ) : post ? (
           <>
             <Typography variant="subtitle1" gutterBottom>
-              By {post.author}
+              By {authorDisplayName || post.author}
             </Typography>
             <Typography variant="caption" display="block" gutterBottom>
               Created: {formatDateForDisplay(post.createdDate)}

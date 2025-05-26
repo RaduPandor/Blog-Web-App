@@ -1,6 +1,6 @@
 import { PostPreview } from "../Models/Post";
 import { Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
 
 type PostListProps = {
@@ -9,6 +9,8 @@ type PostListProps = {
   onEdit: (postId: number) => void;
   onDelete: (id: number) => void;
 };
+
+type UserDisplayNames = Record<string, string>;
 
 const formatDateForDisplay = (dateString: string): string => {
   if (!dateString) return "";
@@ -36,6 +38,39 @@ const formatDateForDisplay = (dateString: string): string => {
 export const PostList = ({ posts, onView, onEdit, onDelete }: PostListProps) => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [postToDelete, setPostToDelete] = useState<PostPreview | null>(null);
+  const [userDisplayNames, setUserDisplayNames] = useState<UserDisplayNames>({});
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+  useEffect(() => {
+    const fetchUserDisplayNames = async () => {
+      const uniqueAuthorIds = [...new Set(posts.map(post => post.author))];
+      const namePromises = uniqueAuthorIds.map(async (authorId) => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/Auth/${authorId}`, {
+            credentials: "include",
+          });
+          if (response.ok) {
+            const user = await response.json();
+            return { id: authorId, displayName: user.displayName || user.username || authorId };
+          }
+        } catch (error) {
+          console.error(`Error fetching user ${authorId}:`, error);
+        }
+        return { id: authorId, displayName: authorId };
+      });
+
+      const userNames = await Promise.all(namePromises);
+      const namesMap: UserDisplayNames = {};
+      userNames.forEach(({ id, displayName }) => {
+        namesMap[id] = displayName;
+      });
+      setUserDisplayNames(namesMap);
+    };
+
+    if (posts.length > 0) {
+      fetchUserDisplayNames();
+    }
+  }, [posts, API_BASE_URL]);
 
   const handleDeleteClick = (post: PostPreview) => {
     setPostToDelete(post);
@@ -75,7 +110,7 @@ export const PostList = ({ posts, onView, onEdit, onDelete }: PostListProps) => 
               <TableRow key={post.id}>
                 <TableCell>{post.id}</TableCell>
                 <TableCell>{post.title}</TableCell>
-                <TableCell>{post.author}</TableCell>
+                <TableCell>{userDisplayNames[post.author] || post.author}</TableCell>
                 <TableCell>{post.contentPreview}</TableCell>
                 <TableCell>{formatDateForDisplay(post.createdDate)}</TableCell>
                 <TableCell>{formatDateForDisplay(post.lastModifiedDate)}</TableCell>

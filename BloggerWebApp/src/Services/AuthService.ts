@@ -1,4 +1,5 @@
 export type CurrentUser = {
+  displayName: string;
   id: string;
   userName: string;
   roles: string[];

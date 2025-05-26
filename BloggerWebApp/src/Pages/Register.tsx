@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 interface RegisterFormData {
   username: string;
+  displayName: string;
   password: string;
   confirmPassword: string;
 }
@@ -16,6 +17,7 @@ const Register = () => {
 
   const [formData, setFormData] = useState<RegisterFormData>({
     username: "",
+    displayName: "",
     password: "",
     confirmPassword: "",
   });
@@ -27,6 +29,28 @@ const Register = () => {
     });
   };
 
+  const validatePassword = (password: string): string[] => {
+    const errors: string[] = [];
+    
+    if (password.length < 6) {
+      errors.push("Password must be at least 6 characters long");
+    }
+    if (!/[a-z]/.test(password)) {
+      errors.push("Password must contain at least one lowercase letter");
+    }
+    if (!/[A-Z]/.test(password)) {
+      errors.push("Password must contain at least one uppercase letter");
+    }
+    if (!/\d/.test(password)) {
+      errors.push("Password must contain at least one digit");
+    }
+      if (!/[^A-Za-z0-9]/.test(password)) {
+    errors.push("Password must contain at least one special character");
+    }
+    
+    return errors;
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
@@ -35,10 +59,18 @@ const Register = () => {
       setError("Username cannot be empty or contain spaces.");
       return;
     }
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters long.");
+    
+    if (!formData.displayName.trim()) {
+      setError("Display name cannot be empty.");
       return;
     }
+
+    const passwordErrors = validatePassword(formData.password);
+    if (passwordErrors.length > 0) {
+      setError(passwordErrors.join(". "));
+      return;
+    }
+
     if (formData.password.trim() !== formData.confirmPassword.trim()) {
       setError("Passwords do not match.");
       return;
@@ -48,33 +80,54 @@ const Register = () => {
 
     try {
       const API_BASE_URL = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const registerResponse = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           username: formData.username.trim(),
+          displayName: formData.displayName.trim(),
           password: formData.password.trim(),
           confirmPassword: formData.confirmPassword.trim(),
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => {
+      if (!registerResponse.ok) {
+        const errorData = await registerResponse.json().catch(() => {
           throw new Error("Unexpected server response.");
         });
         throw new Error(errorData.message || "Registration failed.");
       }
 
-      const data = await response.json();
+      const loginResponse = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          username: formData.username.trim(),
+          password: formData.password.trim(),
+        }),
+      });
 
-      localStorage.setItem("user", JSON.stringify(data.user));
+      if (!loginResponse.ok) {
+        setSuccess(true);
+        setTimeout(() => {
+          navigate("/login");
+        }, 3000);
+        return;
+      }
+
+      const loginData = await loginResponse.json();
+      localStorage.setItem("user", JSON.stringify(loginData.user));
 
       setSuccess(true);
       setTimeout(() => {
-        navigate("/login");
-      }, 3000);
+        navigate("/");
+      }, 2000);
     } catch (err: unknown) {
       if (err instanceof Error) {
         if (err.message.includes("Failed to fetch")) {
@@ -89,6 +142,9 @@ const Register = () => {
       setLoading(false);
     }
   };
+
+  const passwordErrors = formData.password ? validatePassword(formData.password) : [];
+  const hasPasswordErrors = passwordErrors.length > 0;
 
   return (
     <Container maxWidth="sm">
@@ -112,6 +168,17 @@ const Register = () => {
               onChange={handleChange}
               fullWidth
               required
+              helperText="This will be used to log in"
+            />
+
+            <TextField
+              label="Display Name"
+              name="displayName"
+              value={formData.displayName}
+              onChange={handleChange}
+              fullWidth
+              required
+              helperText="This name will be shown to other users"
             />
 
             <TextField
@@ -122,6 +189,35 @@ const Register = () => {
               onChange={handleChange}
               fullWidth
               required
+              error={hasPasswordErrors}
+              helperText={
+                hasPasswordErrors ? (
+                  <Box component="div">
+                    <Typography variant="caption" color="error">
+                      Password requirements:
+                    </Typography>
+                    <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                      <li style={{ color: formData.password.length >= 6 ? 'green' : 'red' }}>
+                        At least 6 characters
+                      </li>
+                      <li style={{ color: /[a-z]/.test(formData.password) ? 'green' : 'red' }}>
+                        One lowercase letter
+                      </li>
+                      <li style={{ color: /[A-Z]/.test(formData.password) ? 'green' : 'red' }}>
+                        One uppercase letter
+                      </li>
+                      <li style={{ color: /\d/.test(formData.password) ? 'green' : 'red' }}>
+                        One digit
+                      </li>
+                        <li style={{ color: /[^A-Za-z0-9]/.test(formData.password) ? 'green' : 'red' }}>
+                          One special character
+                        </li>
+                    </ul>
+                  </Box>
+                ) : (
+                  "Must contain uppercase, lowercase, and digit"
+                )
+              }
             />
 
             <TextField
@@ -132,9 +228,9 @@ const Register = () => {
               onChange={handleChange}
               fullWidth
               required
-              error={!!error && formData.password.trim() !== formData.confirmPassword.trim()}
+              error={!!formData.confirmPassword && formData.password.trim() !== formData.confirmPassword.trim()}
               helperText={
-                !!error && formData.password.trim() !== formData.confirmPassword.trim()
+                !!formData.confirmPassword && formData.password.trim() !== formData.confirmPassword.trim()
                   ? "Passwords do not match"
                   : ""
               }
@@ -145,7 +241,7 @@ const Register = () => {
               variant="contained"
               color="primary"
               fullWidth
-              disabled={loading}
+              disabled={loading || hasPasswordErrors}
               startIcon={loading ? <CircularProgress size={20} /> : null}
             >
               {loading ? "Registering..." : "Register"}
@@ -160,7 +256,7 @@ const Register = () => {
         <Snackbar
           open={success}
           autoHideDuration={3000}
-          message="Registration successful! Redirecting..."
+          message="Registration successful! Logging you in..."
           onClose={() => setSuccess(false)}
         />
       </Box>
