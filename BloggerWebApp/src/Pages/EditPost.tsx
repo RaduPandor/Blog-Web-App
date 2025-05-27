@@ -7,7 +7,6 @@ import { Button, Container, Typography, Box, TextField, Paper, CircularProgress 
 
 interface FormData {
   title: string;
-  author: string;
   content: string;
 }
 
@@ -21,7 +20,6 @@ function EditPost() {
   
   const [formData, setFormData] = useState<FormData>({
     title: "",
-    author: "",
     content: ""
   });
 
@@ -29,7 +27,6 @@ function EditPost() {
     if (post) {
       setFormData({
         title: post.title,
-        author: post.author,
         content: post.content
       });
     }
@@ -46,14 +43,13 @@ function EditPost() {
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.author || !formData.content || !post) {
+    if (!formData.title || !formData.content || !post) {
       return;
     }
     
     const updatedPost: Post = {
       ...post,
       title: formData.title,
-      author: formData.author,
       content: formData.content
     };
     
@@ -114,23 +110,13 @@ function EditPost() {
           />
           
           <TextField
-            label="Author"
-            name="author"
-            value={formData.author}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-            required
-          />
-          
-          <TextField
             label="Content"
             name="content"
             value={formData.content}
             onChange={handleChange}
             fullWidth
             multiline
-            rows={6}
+            rows={20}
             margin="normal"
             required
           />

@@ -7,6 +7,7 @@ import Register from "./Pages/Register";
 import Login from "./Pages/Login";
 import ManageUsers from "./Pages/ManageUsers";
 import EditProfile from "./Pages/EditProfile"
+import AddPost from "./Pages/AddPost"
 
 const router = createBrowserRouter([
   {
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
       { path: "login", Component: Login },
       { path: "manage-users", Component: ManageUsers },
       { path: "edit-profile", Component: EditProfile },
+      { path: "add-post", Component: AddPost },
     ],
   },
 ]);

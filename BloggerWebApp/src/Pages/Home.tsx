@@ -34,7 +34,7 @@ function Home() {
     : null;
   const [, setSelectedPostId] = useState<number | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const { addPostMutation, deletePostMutation, errorMessage } = usePostMutations(() => {
+  const { addPostMutation, errorMessage } = usePostMutations(() => {
     setFormOpen(false);
     setSelectedPostId(null);
   });
@@ -45,18 +45,6 @@ function Home() {
       author: user?.id || ""
     };
     addPostMutation.mutate(postWithAuthor);
-  };
-
-  const handleDeletePost = (id: number) => {
-    deletePostMutation.mutate(id);
-  };
-
-  const handleViewPost = (postId: number) => {
-    navigate(`/post/${postId}`);
-  };
-
-  const handleEditPost = (postId: number) => {
-    navigate(`/post/${postId}/edit`);
   };
 
   const handleCloseForm = () => {
@@ -99,10 +87,7 @@ function Home() {
               <Button
                 variant="contained"
                 color="primary"
-                onClick={() => {
-                  setSelectedPostId(null);
-                  setFormOpen(true);
-                }}
+                onClick={() => navigate("/add-post")}
               >
                 Add Post
               </Button>
@@ -147,9 +132,6 @@ function Home() {
 
         <PostList 
           posts={posts} 
-          onView={handleViewPost}
-          onEdit={handleEditPost} 
-          onDelete={handleDeletePost} 
         />
 
         {formOpen && (
